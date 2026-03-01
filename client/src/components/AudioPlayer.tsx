@@ -1,31 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 
 interface Props {
-  audioBlob: Blob | null;
+  audioSrc: string | null;   // playable URL (blob: or mediasource:) — managed by parent
   isLoading: boolean;
   onNarrateClick: () => void;
   disabled: boolean;
 }
 
-export default function AudioPlayer({ audioBlob, isLoading, onNarrateClick, disabled }: Props) {
+export default function AudioPlayer({ audioSrc, isLoading, onNarrateClick, disabled }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress,  setProgress ] = useState(0);
-  const [audioUrl,  setAudioUrl ] = useState<string | null>(null);
 
+  // Reset playback state whenever the source changes
   useEffect(() => {
-    if (!audioBlob) return;
-    const url = URL.createObjectURL(audioBlob);
-    setAudioUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
     setIsPlaying(false);
     setProgress(0);
-  }, [audioBlob]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => () => { if (audioUrl) URL.revokeObjectURL(audioUrl); }, []);
+  }, [audioSrc]);
 
   const handleMain = () => {
-    if (!audioUrl) { onNarrateClick(); return; }
+    if (!audioSrc) { onNarrateClick(); return; }
     const a = audioRef.current;
     if (!a) return;
     if (isPlaying) { a.pause(); setIsPlaying(false); }
@@ -51,10 +45,10 @@ export default function AudioPlayer({ audioBlob, isLoading, onNarrateClick, disa
         border: '1px solid rgba(175,138,80,0.2)',
       }}
     >
-      {audioUrl && (
+      {audioSrc && (
         <audio
           ref={audioRef}
-          src={audioUrl}
+          src={audioSrc}
           onEnded={() => { setIsPlaying(false); setProgress(0); }}
           onTimeUpdate={e => {
             const el = e.currentTarget;
@@ -86,13 +80,12 @@ export default function AudioPlayer({ audioBlob, isLoading, onNarrateClick, disa
           color: off ? 'rgba(0,0,0,0.3)' : '#fde68a',
           boxShadow: off ? 'none' : '0 3px 12px rgba(120,53,15,0.35)',
         }}
-        aria-label={isLoading ? 'Generating' : isPlaying ? 'Pause' : 'Narrate'}
       >
         {isLoading ? (
           <><span className="animate-spin">🎙️</span> Generating…</>
         ) : isPlaying ? (
           <>⏸ Pause</>
-        ) : audioUrl ? (
+        ) : audioSrc ? (
           <>▶ Play</>
         ) : (
           <>🎧 Narrate</>
@@ -119,7 +112,7 @@ export default function AudioPlayer({ audioBlob, isLoading, onNarrateClick, disa
       )}
 
       {/* Progress bar */}
-      {audioUrl && (
+      {audioSrc && (
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ height: '3px', background: 'rgba(175,138,80,0.2)', borderRadius: '99px', overflow: 'hidden' }}>
             <div
@@ -138,7 +131,7 @@ export default function AudioPlayer({ audioBlob, isLoading, onNarrateClick, disa
         </div>
       )}
 
-      {!audioUrl && !isLoading && !disabled && (
+      {!audioSrc && !isLoading && !disabled && (
         <p style={{ fontSize: '10px', fontStyle:'italic', color:'rgba(100,65,15,0.45)', fontFamily:'"Lora",serif' }}>
           click to narrate
         </p>
