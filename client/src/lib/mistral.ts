@@ -8,6 +8,7 @@
 export const MISTRAL_MODELS = {
   vision: 'pixtral-12b-2409',
   text: 'mistral-small-latest',
+  large: 'mistral-large-latest',   // agent orchestrator
 } as const;
 
 const API_BASE = 'https://api.mistral.ai/v1';
@@ -105,6 +106,46 @@ export async function callVision(
 export async function callText(prompt: string, apiKey: string): Promise<string> {
   const messages: ChatMessage[] = [{ role: 'user', content: prompt }];
   return mistralChat(messages, MISTRAL_MODELS.text, apiKey);
+}
+
+/**
+ * Call Mistral Large (agent orchestrator) with a system + user message pair.
+ * Requests JSON output via response_format.
+ */
+export async function callLarge(
+  systemPrompt: string,
+  userMessage: string,
+  apiKey: string,
+): Promise<string> {
+  const body = {
+    model: MISTRAL_MODELS.large,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user',   content: userMessage  },
+    ],
+    temperature: 0.85,
+    max_tokens: 4096,
+    response_format: { type: 'json_object' },
+  };
+
+  const response = await fetch(`${API_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const err = await response.text().catch(() => response.statusText);
+    throw new Error(`Mistral Large ${response.status}: ${err}`);
+  }
+
+  const data = (await response.json()) as MistralResponse;
+  const content = data.choices[0]?.message?.content;
+  if (!content) throw new Error('Mistral Large returned an empty response');
+  return content;
 }
 
 /**

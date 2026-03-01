@@ -1,6 +1,49 @@
 import { callVision, callText, extractJSON } from './mistral';
 import { WorldModelSchema, type WorldModel } from './schemas';
-import { VISION_TO_WORLD_PROMPT, buildRepairPrompt } from './prompts';
+
+// ---------------------------------------------------------------------------
+// Prompts (inlined — prompts.ts removed in agentic refactor)
+// ---------------------------------------------------------------------------
+
+const VISION_TO_WORLD_PROMPT = `You are a creative writing assistant analyzing a child's drawing to build a structured world model for an interactive bedtime story.
+
+Analyze the drawing carefully and extract all visual elements. Return a JSON object with this exact structure:
+{
+  "title": "A short evocative title for the scene (3-6 words)",
+  "characters": [
+    {
+      "name": "Character name (invent a friendly name if not obvious)",
+      "description": "Visual appearance",
+      "role": "hero | companion | antagonist | neutral",
+      "emotion": "Current emotional state",
+      "relationships": ["Relationship to other characters"]
+    }
+  ],
+  "setting": {
+    "place": "Where the story takes place",
+    "time": "Time of day or era",
+    "weather": "Weather or atmosphere",
+    "vibe": "Overall mood/feeling"
+  },
+  "objects": ["Important objects or items visible in the drawing"],
+  "themes": ["2-4 story themes suggested by the drawing, e.g. friendship, adventure, magic"],
+  "storyHooks": ["2-3 interesting story possibilities inspired by the drawing"],
+  "safetyNotes": ["Any content to avoid based on the drawing — use empty array if none"]
+}
+
+If the drawing is abstract or unclear, use your imagination to fill in child-friendly details.
+Respond ONLY with the JSON object — no markdown, no explanation.`;
+
+function buildRepairPrompt(rawResponse: string, errorMessage: string): string {
+  return `The following JSON failed to parse correctly. Please fix it and return valid JSON only.
+
+ERROR: ${errorMessage}
+
+ORIGINAL RESPONSE:
+${rawResponse}
+
+Return ONLY the corrected JSON object matching the required WorldModel schema. No explanation, no markdown.`;
+}
 
 /**
  * Step 3 — Vision pass.
