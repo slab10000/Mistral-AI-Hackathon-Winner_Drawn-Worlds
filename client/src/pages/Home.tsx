@@ -5,6 +5,7 @@ import ToolBar from '../components/ToolBar';
 import StoryTimeline from '../components/StoryTimeline';
 import DrawPrompt from '../components/DrawPrompt';
 import SpeakPrompt from '../components/SpeakPrompt';
+import DreamyParticles from '../components/DreamyParticles';
 import { visionToWorld } from '../lib/visionToWorld';
 import { visionToAge } from '../lib/visionToAge';
 import { visionToDrawingDescription } from '../lib/visionToDrawing';
@@ -654,11 +655,12 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="min-h-screen flex flex-col relative"
       style={{
         background: 'linear-gradient(145deg, #160b04 0%, #2a1508 40%, #1c0d05 70%, #110804 100%)',
       }}
     >
+      <DreamyParticles />
 
       {/* ── Thin top bar ───────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-6 py-2 flex-shrink-0">
