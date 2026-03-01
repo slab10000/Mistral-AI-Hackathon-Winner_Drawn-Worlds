@@ -217,7 +217,7 @@ const CanvasBoard = forwardRef<CanvasBoardHandle, Props>(
     );
 
     return (
-      <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-purple-200 bg-white">
+      <div className="relative w-full h-full overflow-hidden bg-white">
         {/* Decorative corner stars */}
         <span className="absolute top-2 left-2 text-purple-200 text-lg pointer-events-none select-none">✦</span>
         <span className="absolute top-2 right-2 text-pink-200 text-lg pointer-events-none select-none">✦</span>
@@ -228,7 +228,7 @@ const CanvasBoard = forwardRef<CanvasBoardHandle, Props>(
           ref={canvasRef}
           width={CANVAS_W}
           height={CANVAS_H}
-          className="block w-full touch-none"
+          className="block w-full h-full touch-none"
           style={{ cursor: disabled ? 'not-allowed' : isEraser ? 'cell' : 'crosshair' }}
         />
       </div>

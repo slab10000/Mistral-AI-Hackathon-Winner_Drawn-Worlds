@@ -59,7 +59,7 @@ function ageToGroup(age: number): string {
 }
 
 function playWizardVoicePrompt(): void {
-  const audio = new Audio('/wizard-draw-your-age.mp3');
+  const audio = new Audio('/voice_how_old.mp3');
   audio.play().catch(() => {
     if (!('speechSynthesis' in window)) return;
     const utter = new SpeechSynthesisUtterance('Can you draw your age for me?');
@@ -68,6 +68,11 @@ function playWizardVoicePrompt(): void {
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utter);
   });
+}
+
+function playBookOpenVoicePrompt(): void {
+  const audio = new Audio('/voice_welcome.mp3');
+  audio.play().catch(() => {});
 }
 
 /** Play a URL and resolve when it ends or errors. */
@@ -106,6 +111,7 @@ export default function Home() {
 
   // ── Audio toggle ──────────────────────────────────────────────────────────
   const [audioEnabled,  setAudioEnabled ] = useState(true);
+  const [autoTurnPages, setAutoTurnPages] = useState(true);
 
   // ── Story / Agent ─────────────────────────────────────────────────────────
   const [worldModel,    setWorldModel   ] = useState<WorldModel | null>(null);
@@ -135,6 +141,7 @@ export default function Home() {
   const previewAudioRef       = useRef<HTMLAudioElement | null>(null);
   const ageGroupRef           = useRef(ageGroup);
   const audioEnabledRef       = useRef(audioEnabled);
+  const autoTurnPagesRef      = useRef(autoTurnPages);
   const pageAdvanceResolveRef = useRef<(() => void) | null>(null);
 
   const characterNameMap = Object.fromEntries(
@@ -144,6 +151,14 @@ export default function Home() {
   // Keep refs current
   useEffect(() => { ageGroupRef.current = ageGroup; }, [ageGroup]);
   useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
+  useEffect(() => {
+    autoTurnPagesRef.current = autoTurnPages;
+    // If manual mode was waiting and user turned auto mode on, continue immediately.
+    if (autoTurnPages && pageAdvanceResolveRef.current) {
+      pageAdvanceResolveRef.current();
+      pageAdvanceResolveRef.current = null;
+    }
+  }, [autoTurnPages]);
 
   // ---------------------------------------------------------------------------
   // Age-gate handlers
@@ -469,8 +484,10 @@ export default function Home() {
 
           // ── Paragraph — page turn + narrate ──────────────────────────────
           if (ev.type === 'paragraph') {
-            await new Promise<void>(resolve => { pageAdvanceResolveRef.current = resolve; });
-            pageAdvanceResolveRef.current = null;
+            if (!autoTurnPagesRef.current) {
+              await new Promise<void>(resolve => { pageAdvanceResolveRef.current = resolve; });
+              pageAdvanceResolveRef.current = null;
+            }
             if (cancelledRef.current) break;
 
             previewMusicStopRef.current?.();
@@ -646,7 +663,14 @@ export default function Home() {
   // =========================================================================
 
   if (!bookOpen) {
-    return <BookCover onOpen={() => setBookOpen(true)} />;
+    return (
+      <BookCover
+        onOpen={() => {
+          playBookOpenVoicePrompt();
+          setBookOpen(true);
+        }}
+      />
+    );
   }
 
   // =========================================================================
@@ -725,6 +749,27 @@ export default function Home() {
             }}
           >
             {audioEnabled ? '🔊 Audio ON' : '🔇 Audio OFF'}
+          </button>
+
+          <button
+            onClick={() => setAutoTurnPages(v => !v)}
+            title={autoTurnPages
+              ? 'Auto Turn Pages ON — pages advance after each narration'
+              : 'Auto Turn Pages OFF — use Debug: Turn Page to continue'}
+            style={{
+              fontFamily: '"Nunito",sans-serif',
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '5px 10px',
+              borderRadius: '999px',
+              border: autoTurnPages ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(245,158,11,0.45)',
+              background: autoTurnPages ? 'rgba(20,83,45,0.45)' : 'rgba(120,53,15,0.4)',
+              color: autoTurnPages ? 'rgba(187,247,208,0.95)' : 'rgba(254,243,199,0.95)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            {autoTurnPages ? '📖 Auto Turn ON' : '📖 Auto Turn OFF'}
           </button>
 
           <button
