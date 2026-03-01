@@ -663,7 +663,7 @@ export default function Home() {
       <DreamyParticles />
 
       {/* ── Thin top bar ───────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-6 py-2 flex-shrink-0">
+      <div className="flex items-center justify-between px-6 py-2 flex-shrink-0 glass-panel z-10 sticky top-0">
 
         <div className="flex items-center gap-2">
           <span style={{ color: '#fde68a', fontSize: '16px', filter: 'drop-shadow(0 0 8px rgba(250,204,21,0.7))' }}>✨</span>
@@ -694,9 +694,10 @@ export default function Home() {
                       padding: '2px 8px',
                       borderRadius: '99px',
                       transition: 'all 0.2s',
-                      background: ageGroup === ag.value ? 'rgba(139,92,246,0.7)' : 'rgba(255,255,255,0.08)',
+                      background: ageGroup === ag.value ? 'rgba(139,92,246,0.7)' : 'rgba(255,255,255,0.04)',
                       color: ageGroup === ag.value ? '#fff' : 'rgba(255,255,255,0.4)',
-                      border: 'none',
+                      border: '1px solid',
+                      borderColor: ageGroup === ag.value ? 'transparent' : 'rgba(255,255,255,0.1)',
                       cursor: isRunning ? 'default' : 'pointer',
                     }}
                   >
@@ -777,14 +778,13 @@ export default function Home() {
       </div>
 
       {/* ── Book spread ───────────────────────────────────────────────────── */}
-      <div className="flex-1 flex items-center justify-center px-3 pb-4 pt-0 overflow-hidden">
+      <div className="flex-1 flex items-center justify-center px-3 pb-4 pt-0 overflow-hidden relative z-10 mt-4">
         <div
           className="book-spread-enter w-full flex flex-col lg:flex-row overflow-hidden"
           style={{
             maxWidth: '1260px',
             height: 'min(calc(100vh - 68px), 780px)',
             borderRadius: '2px',
-            boxShadow: '0 40px 100px rgba(0,0,0,0.9), 0 10px 30px rgba(0,0,0,0.7)',
           }}
         >
 
@@ -1090,26 +1090,6 @@ export default function Home() {
                     errorMsg={storyError}
                   />
                 </div>
-
-                {/* Generate button — shown when no story yet and not running */}
-                {!hasStory && !isRunning && (
-                  <div className="flex-shrink-0 px-5 pb-4">
-                    <button
-                      onClick={runGenerate}
-                      className="w-full py-3 rounded-xl font-black text-sm transition-all active:scale-95"
-                      style={{
-                        fontFamily: '"Nunito",sans-serif',
-                        background: 'linear-gradient(135deg, #7c3aed, #db2777)',
-                        color: '#fff',
-                        boxShadow: '0 4px 15px rgba(124,58,237,0.4)',
-                        cursor: 'pointer',
-                        border: 'none',
-                      }}
-                    >
-                      🌟 Tell My Story!
-                    </button>
-                  </div>
-                )}
 
                 <PageLabel side="right" text="the story" />
               </div>

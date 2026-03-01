@@ -359,3 +359,51 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
+
+
+
+/* Ambient glow orb for mouse tracking */
+.ambient-mouse-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(217, 70, 239, 0.05) 40%, transparent 70%);
+  filter: blur(60px);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.3s ease;
+  z-index: 1;
+  /* Above dark background, below book */
+  mix-blend-mode: screen;
+}
+
+/* Glassmorphism utility for UI */
+.glass-panel {
+  background: rgba(20, 10, 5, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Ambient float for the open book */
+@keyframes ambientFloat {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.9), 0 10px 30px rgba(0, 0, 0, 0.7);
+  }
+
+  50% {
+    transform: translateY(-8px);
+    box-shadow: 0 55px 110px rgba(0, 0, 0, 0.8), 0 15px 40px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.animate-ambient-float {
+  animation: ambientFloat 5s ease-in-out infinite;
+}
