@@ -247,6 +247,35 @@ export default function Home() {
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Debug helpers
+  // ---------------------------------------------------------------------------
+
+  const handleDebugTurnPage = useCallback(async () => {
+    if (ageStep !== 'done') return;
+    if (flipPhase !== 'idle') return;
+    const paragraphCount = storyEvents.filter(e => e.type === 'paragraph').length;
+    if (paragraphCount === 0) return;
+
+    const nextIdx = currentPageIdxRef.current === null
+      ? 0
+      : (currentPageIdxRef.current + 1) % paragraphCount;
+
+    if (currentPageIdxRef.current !== null) {
+      setFlipPhase('flip-out');
+      await new Promise(r => setTimeout(r, 440));
+      setCurrentPageIdx(nextIdx);
+      currentPageIdxRef.current = nextIdx;
+      setFlipPhase('flip-in');
+      await new Promise(r => setTimeout(r, 440));
+      setFlipPhase('idle');
+      return;
+    }
+
+    setCurrentPageIdx(nextIdx);
+    currentPageIdxRef.current = nextIdx;
+  }, [ageStep, flipPhase, storyEvents]);
+
+  // ---------------------------------------------------------------------------
   // Main agent loop
   // ---------------------------------------------------------------------------
 
@@ -380,7 +409,7 @@ export default function Home() {
             if (currentPageIdxRef.current !== null) {
               // ── Animate page turn ──────────────────────────────────────
               setFlipPhase('flip-out');
-              await new Promise(r => setTimeout(r, 380));
+              await new Promise(r => setTimeout(r, 440));
               if (cancelledRef.current) break;
 
               // Swap content while pages are "hidden" (fully rotated)
@@ -388,7 +417,7 @@ export default function Home() {
               currentPageIdxRef.current = paraIdx;
 
               setFlipPhase('flip-in');
-              await new Promise(r => setTimeout(r, 380));
+              await new Promise(r => setTimeout(r, 440));
               if (cancelledRef.current) break;
               setFlipPhase('idle');
             } else {
@@ -590,6 +619,35 @@ export default function Home() {
           )}
 
           <button
+            onClick={() => { void handleDebugTurnPage(); }}
+            disabled={ageGateActive || paragraphEvents.length === 0 || flipPhase !== 'idle'}
+            style={{
+              fontFamily: '"Nunito",sans-serif',
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '5px 10px',
+              borderRadius: '999px',
+              border: '1px solid rgba(59,130,246,0.35)',
+              background:
+                ageGateActive || paragraphEvents.length === 0 || flipPhase !== 'idle'
+                  ? 'rgba(255,255,255,0.08)'
+                  : 'rgba(30,64,175,0.35)',
+              color:
+                ageGateActive || paragraphEvents.length === 0 || flipPhase !== 'idle'
+                  ? 'rgba(255,255,255,0.35)'
+                  : 'rgba(219,234,254,0.95)',
+              cursor:
+                ageGateActive || paragraphEvents.length === 0 || flipPhase !== 'idle'
+                  ? 'not-allowed'
+                  : 'pointer',
+              transition: 'all 0.2s',
+            }}
+            title="Debug only: force a page turn"
+          >
+            Debug: Turn Page
+          </button>
+
+          <button
             onClick={handleFreshStart}
             style={{
               fontFamily: '"Nunito",sans-serif',
@@ -613,10 +671,7 @@ export default function Home() {
       {/* ── Book spread ───────────────────────────────────────────────────── */}
       <div className="flex-1 flex items-center justify-center px-3 pb-4 pt-0 overflow-hidden">
         <div
-          className={`book-spread-enter w-full flex flex-col lg:flex-row overflow-hidden ${
-            flipPhase === 'flip-out' ? 'book-flip-out' :
-            flipPhase === 'flip-in'  ? 'book-flip-in'  : ''
-          }`}
+          className="book-spread-enter w-full flex flex-col lg:flex-row overflow-hidden"
           style={{
             maxWidth: '1260px',
             height: 'min(calc(100vh - 68px), 780px)',
@@ -629,9 +684,19 @@ export default function Home() {
               LEFT PAGE  —  drawing / illustration / draw-prompt
               ════════════════════════════════════════════════════════ */}
           <div
-            className="book-page book-page-left flex flex-col overflow-hidden"
+            className={`book-page book-page-left page-turn-leaf flex flex-col overflow-hidden ${
+              flipPhase === 'flip-out' ? 'page-turn-out' :
+              flipPhase === 'flip-in'  ? 'page-turn-in'  : ''
+            }`}
             style={{ flex: '1 1 0', minWidth: 0, position: 'relative' }}
           >
+            <div
+              aria-hidden
+              className={`page-turn-shadow ${
+                flipPhase === 'flip-out' ? 'page-turn-shadow-out' :
+                flipPhase === 'flip-in'  ? 'page-turn-shadow-in'  : ''
+              }`}
+            />
 
             {/* ── Age gate: locked ──────────────────────────────────── */}
             {ageGateActive && ageStep === 'locked' && (
