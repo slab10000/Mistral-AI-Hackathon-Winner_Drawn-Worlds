@@ -15,6 +15,7 @@ interface Props {
   brushColor: string;
   brushSize: number;
   isEraser: boolean;
+  disabled?: boolean;
 }
 
 // Internal drawing canvas resolution (independent of CSS display size)
@@ -27,7 +28,7 @@ const MAX_HISTORY = 40;
 // ---------------------------------------------------------------------------
 
 const CanvasBoard = forwardRef<CanvasBoardHandle, Props>(
-  ({ brushColor, brushSize, isEraser }, ref) => {
+  ({ brushColor, brushSize, isEraser, disabled = false }, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const isDrawing = useRef(false);
     const lastPos = useRef<{ x: number; y: number } | null>(null);
@@ -101,6 +102,7 @@ const CanvasBoard = forwardRef<CanvasBoardHandle, Props>(
 
     const startDraw = useCallback(
       (e: MouseEvent | TouchEvent) => {
+        if (disabled) return;
         e.preventDefault();
         const pos = getPos(e);
         if (!pos) return;
@@ -108,11 +110,12 @@ const CanvasBoard = forwardRef<CanvasBoardHandle, Props>(
         isDrawing.current = true;
         lastPos.current = pos;
       },
-      [getPos, saveSnapshot],
+      [disabled, getPos, saveSnapshot],
     );
 
     const draw = useCallback(
       (e: MouseEvent | TouchEvent) => {
+        if (disabled) return;
         e.preventDefault();
         if (!isDrawing.current || !lastPos.current) return;
         const pos = getPos(e);
@@ -133,7 +136,7 @@ const CanvasBoard = forwardRef<CanvasBoardHandle, Props>(
 
         lastPos.current = pos;
       },
-      [getPos, getCtx, brushColor, brushSize, isEraser],
+      [disabled, getPos, getCtx, brushColor, brushSize, isEraser],
     );
 
     const stopDraw = useCallback(() => {
@@ -226,7 +229,7 @@ const CanvasBoard = forwardRef<CanvasBoardHandle, Props>(
           width={CANVAS_W}
           height={CANVAS_H}
           className="block w-full touch-none"
-          style={{ cursor: isEraser ? 'cell' : 'crosshair' }}
+          style={{ cursor: disabled ? 'not-allowed' : isEraser ? 'cell' : 'crosshair' }}
         />
       </div>
     );
