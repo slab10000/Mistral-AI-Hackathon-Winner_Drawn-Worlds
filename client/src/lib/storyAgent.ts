@@ -6,7 +6,32 @@ import type { StoryEvent, AgentSegmentResponse } from './agentTypes';
 // System prompt
 // ---------------------------------------------------------------------------
 
-function buildSystemPrompt(ageGroup: string): string {
+function buildSystemPrompt(ageGroup: string, demoMode = false): string {
+  if (demoMode) {
+    return `You are an interactive bedtime story agent for ${ageGroup}.
+You are in DEMO MODE — produce the shortest possible story to showcase all features.
+
+AVAILABLE EVENT TYPES (output as JSON array "events"):
+1. { "type": "music", "description": "..." } — Background music. Use ONCE on the first call.
+2. { "type": "paragraph", "text": "..." } — One short narrative paragraph (max 40 words).
+3. { "type": "sound_effect", "description": "..." } — A sound effect after a paragraph.
+4. { "type": "ask_user_to_draw", "prompt": "...", "context": "..." } — Ask the child to draw something. Use EXACTLY ONCE across the whole story.
+5. { "type": "ask_user_to_speak", "prompt": "..." } — Ask the child to say ONE word. Use EXACTLY ONCE across the whole story.
+6. { "type": "finish" } — End the story.
+
+DEMO RULES:
+- The ENTIRE story must have EXACTLY 1 paragraph, 1 drawing interaction, 1 speaking interaction, then finish.
+- Each call outputs events up to the next user interaction or finish.
+- Segment 1: music + paragraph + sound_effect + ask_user_to_draw
+- Segment 2: ask_user_to_speak (incorporate the drawing)
+- Segment 3: finish (wrap up in zero paragraphs, just end)
+- Keep the paragraph very short (under 40 words). Be warm and magical.
+- Safety: no scary, violent, or inappropriate content.
+
+OUTPUT FORMAT — respond with ONLY valid JSON:
+{ "events": [ ...event objects... ] }`;
+  }
+
   return `You are an interactive bedtime story agent for ${ageGroup}.
 You craft a magical, age-appropriate story in segments. Each time you are called, you output the NEXT segment of events.
 
@@ -45,6 +70,7 @@ function buildContextMessage(
   worldModel: WorldModel,
   ageGroup: string,
   previousEvents: StoryEvent[],
+  demoMode = false,
 ): string {
   const worldJson = JSON.stringify(worldModel, null, 2);
 
@@ -72,6 +98,30 @@ function buildContextMessage(
   }
 
   const isFirst = previousEvents.length === 0;
+
+  if (demoMode) {
+    const segmentNum = interactionCount + 1;
+    let segmentInstruction = '';
+    if (segmentNum === 1) {
+      segmentInstruction = 'This is segment 1. Output: music + one short paragraph (under 40 words) + sound_effect + ask_user_to_draw. Stop after ask_user_to_draw.';
+    } else if (segmentNum === 2) {
+      segmentInstruction = 'This is segment 2. Output: ask_user_to_speak only. Stop after ask_user_to_speak.';
+    } else {
+      segmentInstruction = 'This is the final segment. Output ONLY: { "type": "finish" }. Nothing else.';
+    }
+
+    return `
+WORLD MODEL (from child's drawing):
+${worldJson}
+
+AGE GROUP: ${ageGroup}
+DEMO MODE — segment ${segmentNum} of 3.
+${segmentInstruction}
+
+STORY SO FAR:
+${storyLines.length > 0 ? storyLines.join('\n') : '(none yet)'}
+`.trim();
+  }
 
   return `
 WORLD MODEL (from child's drawing):
@@ -102,9 +152,10 @@ export async function runStoryAgent(
   ageGroup: string,
   previousEvents: StoryEvent[],
   apiKey: string,
+  demoMode = false,
 ): Promise<AgentSegmentResponse> {
-  const systemPrompt = buildSystemPrompt(ageGroup);
-  const userMessage  = buildContextMessage(worldModel, ageGroup, previousEvents);
+  const systemPrompt = buildSystemPrompt(ageGroup, demoMode);
+  const userMessage  = buildContextMessage(worldModel, ageGroup, previousEvents, demoMode);
 
   const raw = await callLarge(systemPrompt, userMessage, apiKey);
 

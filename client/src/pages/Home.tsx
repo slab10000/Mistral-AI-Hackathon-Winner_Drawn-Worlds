@@ -103,6 +103,11 @@ export default function Home() {
   const [ageBusy,    setAgeBusy   ] = useState(false);
   const [wizardVideoFailed, setWizardVideoFailed] = useState(false);
 
+  // ── Demo mode ────────────────────────────────────────────────────────────
+  const [demoMode, setDemoMode] = useState(false);
+  const demoModeRef = useRef(false);
+  useEffect(() => { demoModeRef.current = demoMode; }, [demoMode]);
+
   // ── Story / Agent ─────────────────────────────────────────────────────────
   const [worldModel,    setWorldModel   ] = useState<WorldModel | null>(null);
   const [storyEvents,   setStoryEvents  ] = useState<StoryEvent[]>([]);
@@ -244,6 +249,7 @@ export default function Home() {
     setBrushColor('#3B82F6');
     setBrushSize(8);
     setIsEraser(false);
+    setDemoMode(false);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -338,7 +344,7 @@ export default function Home() {
 
         // 1. Ask agent for the next segment
         setPhase('agent');
-        const segment = await runStoryAgent(wm, ageGroupRef.current, allEvents, mistralKey);
+        const segment = await runStoryAgent(wm, ageGroupRef.current, allEvents, mistralKey, demoModeRef.current);
         if (cancelledRef.current) break;
 
         const newEvts = segment.events;
@@ -645,6 +651,32 @@ export default function Home() {
             title="Debug only: force a page turn"
           >
             Debug: Turn Page
+          </button>
+
+          <button
+            onClick={() => setDemoMode(d => !d)}
+            disabled={isRunning}
+            style={{
+              fontFamily: '"Nunito",sans-serif',
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '5px 10px',
+              borderRadius: '999px',
+              border: demoMode
+                ? '1px solid rgba(250,204,21,0.6)'
+                : '1px solid rgba(250,204,21,0.25)',
+              background: demoMode
+                ? 'rgba(161,98,7,0.55)'
+                : 'rgba(255,255,255,0.08)',
+              color: demoMode
+                ? 'rgba(254,240,138,1)'
+                : 'rgba(255,255,255,0.4)',
+              cursor: isRunning ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+            }}
+            title="Toggle demo mode — ultra-short story showcasing all features"
+          >
+            {demoMode ? '⚡ Demo ON' : '⚡ Demo'}
           </button>
 
           <button
