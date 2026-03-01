@@ -10,71 +10,53 @@ interface Props {
 export default function AudioPlayer({ audioBlob, isLoading, onNarrateClick, disabled }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [progress,  setProgress ] = useState(0);
+  const [audioUrl,  setAudioUrl ] = useState<string | null>(null);
 
-  // Revoke old URL and create new one whenever the blob changes
   useEffect(() => {
     if (!audioBlob) return;
-
     const url = URL.createObjectURL(audioBlob);
-    setAudioUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return url;
-    });
+    setAudioUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
     setIsPlaying(false);
     setProgress(0);
   }, [audioBlob]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (audioUrl) URL.revokeObjectURL(audioUrl);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => () => { if (audioUrl) URL.revokeObjectURL(audioUrl); }, []);
 
-  const handleMainClick = () => {
-    if (!audioUrl) {
-      // No audio yet — trigger generation
-      onNarrateClick();
-      return;
-    }
-
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      audio.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-    }
+  const handleMain = () => {
+    if (!audioUrl) { onNarrateClick(); return; }
+    const a = audioRef.current;
+    if (!a) return;
+    if (isPlaying) { a.pause(); setIsPlaying(false); }
+    else           { a.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false)); }
   };
 
   const handleStop = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
-    setIsPlaying(false);
-    setProgress(0);
+    const a = audioRef.current;
+    if (!a) return;
+    a.pause(); a.currentTime = 0;
+    setIsPlaying(false); setProgress(0);
   };
 
-  const buttonDisabled = disabled || isLoading;
+  const off = disabled || isLoading;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-200 shadow-sm">
-      {/* Hidden audio element */}
+    <div
+      className="flex items-center gap-3 flex-shrink-0"
+      style={{
+        padding: '10px 14px',
+        borderRadius: '8px',
+        background: 'rgba(175,138,80,0.08)',
+        border: '1px solid rgba(175,138,80,0.2)',
+      }}
+    >
       {audioUrl && (
         <audio
           ref={audioRef}
           src={audioUrl}
-          onEnded={() => {
-            setIsPlaying(false);
-            setProgress(0);
-          }}
-          onTimeUpdate={(e) => {
+          onEnded={() => { setIsPlaying(false); setProgress(0); }}
+          onTimeUpdate={e => {
             const el = e.currentTarget;
             setProgress(el.duration ? (el.currentTime / el.duration) * 100 : 0);
           }}
@@ -84,21 +66,30 @@ export default function AudioPlayer({ audioBlob, isLoading, onNarrateClick, disa
 
       {/* Main button */}
       <button
-        onClick={handleMainClick}
-        disabled={buttonDisabled}
-        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-md ${
-          buttonDisabled
-            ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+        onClick={handleMain}
+        disabled={off}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '8px 16px',
+          borderRadius: '6px',
+          fontFamily: '"Nunito",sans-serif',
+          fontSize: '12px',
+          fontWeight: 800,
+          border: 'none',
+          cursor: off ? 'not-allowed' : 'pointer',
+          transition: 'all 0.2s',
+          background: off
+            ? 'rgba(0,0,0,0.07)'
             : isPlaying
-            ? 'bg-gradient-to-r from-orange-400 to-pink-400 text-white hover:opacity-90 active:scale-95'
-            : 'bg-gradient-to-r from-amber-400 to-orange-400 text-white hover:opacity-90 active:scale-95'
-        }`}
-        aria-label={isLoading ? 'Generating narration' : isPlaying ? 'Pause narration' : 'Narrate story'}
+            ? 'linear-gradient(135deg, #b45309, #92400e)'
+            : 'linear-gradient(135deg, #92400e, #78350f)',
+          color: off ? 'rgba(0,0,0,0.3)' : '#fde68a',
+          boxShadow: off ? 'none' : '0 3px 12px rgba(120,53,15,0.35)',
+        }}
+        aria-label={isLoading ? 'Generating' : isPlaying ? 'Pause' : 'Narrate'}
       >
         {isLoading ? (
-          <>
-            <span className="animate-spin inline-block">🎙️</span> Generating…
-          </>
+          <><span className="animate-spin">🎙️</span> Generating…</>
         ) : isPlaying ? (
           <>⏸ Pause</>
         ) : audioUrl ? (
@@ -108,36 +99,49 @@ export default function AudioPlayer({ audioBlob, isLoading, onNarrateClick, disa
         )}
       </button>
 
-      {/* Stop button (only while playing) */}
       {isPlaying && (
         <button
           onClick={handleStop}
-          className="px-3 py-2.5 rounded-xl bg-red-100 text-red-500 hover:bg-red-200 text-sm font-semibold active:scale-95 transition-all"
-          aria-label="Stop narration"
+          style={{
+            padding: '8px 10px',
+            borderRadius: '6px',
+            fontFamily: '"Nunito",sans-serif',
+            fontSize: '11px',
+            fontWeight: 700,
+            border: '1px solid rgba(175,138,80,0.3)',
+            background: 'rgba(175,138,80,0.1)',
+            color: 'rgba(100,65,15,0.7)',
+            cursor: 'pointer',
+          }}
         >
-          ⏹ Stop
+          ⏹
         </button>
       )}
 
       {/* Progress bar */}
       {audioUrl && (
-        <div className="flex-1 min-w-0 flex flex-col gap-1">
-          <div className="h-2 bg-amber-100 rounded-full overflow-hidden">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ height: '3px', background: 'rgba(175,138,80,0.2)', borderRadius: '99px', overflow: 'hidden' }}>
             <div
-              className="h-full bg-gradient-to-r from-amber-400 to-orange-400 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
+              style={{
+                height: '100%',
+                width: `${progress}%`,
+                background: 'linear-gradient(90deg, #92400e, #d97706)',
+                borderRadius: '99px',
+                transition: 'width 0.3s',
+              }}
             />
           </div>
-          <span className="text-xs text-amber-700 font-medium">
-            {isPlaying ? '🎵 Playing…' : '🎵 Ready to play'}
-          </span>
+          <p style={{ fontSize: '10px', color: 'rgba(100,65,15,0.5)', fontFamily:'"Nunito",sans-serif', fontWeight:600, marginTop:'3px' }}>
+            {isPlaying ? '♪ playing…' : '♪ ready'}
+          </p>
         </div>
       )}
 
       {!audioUrl && !isLoading && !disabled && (
-        <span className="text-xs text-amber-700 italic">
-          Click to generate & play narration
-        </span>
+        <p style={{ fontSize: '10px', fontStyle:'italic', color:'rgba(100,65,15,0.45)', fontFamily:'"Lora",serif' }}>
+          click to narrate
+        </p>
       )}
     </div>
   );

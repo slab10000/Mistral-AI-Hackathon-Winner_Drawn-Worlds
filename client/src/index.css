@@ -2,82 +2,176 @@
 @tailwind components;
 @tailwind utilities;
 
-/* -----------------------------------------------------------------------
-   Base resets & globals
-   ----------------------------------------------------------------------- */
+/* =========================================================================
+   BASE
+   ========================================================================= */
 
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
   @apply font-sans antialiased;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* -----------------------------------------------------------------------
-   Custom scrollbar (webkit)
-   ----------------------------------------------------------------------- */
+/* =========================================================================
+   SCROLLBAR
+   ========================================================================= */
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: rgba(180,145,85,0.08); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: rgba(180,145,85,0.3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(180,145,85,0.55); }
 
-::-webkit-scrollbar-track {
-  @apply bg-purple-50 rounded-full;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-purple-200 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-purple-400;
-}
-
-/* -----------------------------------------------------------------------
-   Range input
-   ----------------------------------------------------------------------- */
+/* =========================================================================
+   RANGE INPUT
+   ========================================================================= */
 
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
   border-radius: 9999px;
-  background: #e9d5ff;
+  background: rgba(139,92,246,0.25);
   outline: none;
 }
-
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   border-radius: 50%;
   background: #8b5cf6;
   cursor: pointer;
-  box-shadow: 0 1px 4px rgba(139, 92, 246, 0.4);
+  box-shadow: 0 1px 4px rgba(139,92,246,0.5);
   transition: transform 0.15s;
 }
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
-input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+/* =========================================================================
+   ── BOOK COVER — CLOSED STATE ──────────────────────────────────────────
+   ========================================================================= */
+
+/* Breathing wobble — book "wants" to be opened */
+@keyframes bookWobble {
+  0%   { transform: perspective(1100px) rotateY(-16deg) rotateX(5deg) translateY(0px)   scale(1);    }
+  18%  { transform: perspective(1100px) rotateY(-21deg) rotateX(7deg) translateY(-13px) scale(1.01); }
+  36%  { transform: perspective(1100px) rotateY(-11deg) rotateX(3deg) translateY(-6px)  scale(1.005);}
+  54%  { transform: perspective(1100px) rotateY(-19deg) rotateX(6deg) translateY(-10px) scale(1.01); }
+  72%  { transform: perspective(1100px) rotateY(-13deg) rotateX(4deg) translateY(-4px)  scale(1);    }
+  90%  { transform: perspective(1100px) rotateY(-17deg) rotateX(5deg) translateY(-8px)  scale(1.005);}
+  100% { transform: perspective(1100px) rotateY(-16deg) rotateX(5deg) translateY(0px)   scale(1);    }
+}
+.book-wobble {
+  animation: bookWobble 4.2s ease-in-out infinite;
+  transform-style: preserve-3d;
 }
 
-/* -----------------------------------------------------------------------
-   Float animation (used by the header star)
-   ----------------------------------------------------------------------- */
+/* Opening flip */
+@keyframes bookOpenAnim {
+  0%   { transform: perspective(1100px) rotateY(-16deg) rotateX(5deg) scale(1);    opacity: 1; }
+  28%  { transform: perspective(900px)  rotateY(-4deg)  rotateX(0deg) scale(1.08); opacity: 1; }
+  62%  { transform: perspective(700px)  rotateY(55deg)  rotateX(0deg) scale(1.14); opacity: 0.45; }
+  100% { transform: perspective(700px)  rotateY(105deg) rotateX(0deg) scale(1.25); opacity: 0; }
+}
+.book-opening {
+  animation: bookOpenAnim 0.82s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Cover star pulse */
+@keyframes coverStarPulse {
+  0%,100% { filter: drop-shadow(0 0 18px rgba(250,204,21,0.8)) drop-shadow(0 0 40px rgba(250,204,21,0.35)); }
+  50%     { filter: drop-shadow(0 0 28px rgba(250,204,21,0.95)) drop-shadow(0 0 60px rgba(250,204,21,0.55)); }
+}
+
+/* Stars twinkle */
+@keyframes starTwinkle {
+  0%,100% { opacity: var(--star-opacity, 0.4); transform: scale(1); }
+  50%     { opacity: calc(var(--star-opacity, 0.4) * 0.25); transform: scale(0.7); }
+}
+
+/* "tap to open" gentle pulse */
+@keyframes gentlePulse {
+  0%,100% { opacity: 0.7; }
+  50%     { opacity: 0.35; }
+}
+
+/* =========================================================================
+   ── BOOK SPREAD — OPEN STATE ────────────────────────────────────────────
+   ========================================================================= */
+
+/* The whole book spread entrance */
+@keyframes spreadReveal {
+  from { opacity: 0; transform: scale(0.93) translateY(12px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0px);  }
+}
+.book-spread-enter {
+  animation: spreadReveal 0.55s 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Page texture */
+.book-page {
+  background-color: #fdf8ef;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 27px,
+      rgba(175,138,80,0.055) 27px,
+      rgba(175,138,80,0.055) 28px
+    );
+}
+
+/* Book spine */
+.book-spine {
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0.35) 0%,
+    rgba(0,0,0,0.14) 22%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(0,0,0,0.14) 78%,
+    rgba(0,0,0,0.32) 100%
+  );
+  box-shadow:
+    -3px 0 10px rgba(0,0,0,0.25),
+     3px 0 10px rgba(0,0,0,0.25);
+}
+
+/* Page inner shadow (toward spine) */
+.book-page-left  { box-shadow: inset -8px 0 20px rgba(0,0,0,0.07); }
+.book-page-right { box-shadow: inset  8px 0 20px rgba(0,0,0,0.07); }
+
+/* Fade transition for left-page content swap */
+.page-content-enter  { animation: pageContentIn  0.4s ease-out both; }
+.page-content-exit   { animation: pageContentOut 0.3s ease-in  both; }
+
+@keyframes pageContentIn  { from { opacity:0; transform:translateY(8px);  } to { opacity:1; transform:translateY(0); } }
+@keyframes pageContentOut { from { opacity:1; transform:translateY(0);     } to { opacity:0; transform:translateY(-6px); } }
+
+/* Story drop cap */
+.story-body p:first-of-type::first-letter {
+  float: left;
+  font-family: "Lora", serif;
+  font-size: 4em;
+  font-weight: 900;
+  line-height: 0.8;
+  padding-right: 6px;
+  padding-top: 4px;
+  color: #6d28d9;
+}
+
+/* Floating draw button */
+@keyframes fabAppear {
+  from { opacity:0; transform: scale(0.6) translateY(10px); }
+  to   { opacity:1; transform: scale(1)   translateY(0);    }
+}
+.fab-enter { animation: fabAppear 0.4s 0.6s cubic-bezier(0.34,1.56,0.64,1) both; }
+
+/* =========================================================================
+   LEGACY float (kept for compat)
+   ========================================================================= */
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-6px); }
+  0%,100% { transform: translateY(0px); }
+  50%     { transform: translateY(-6px); }
 }
-
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
+.animate-float { animation: float 3s ease-in-out infinite; }
