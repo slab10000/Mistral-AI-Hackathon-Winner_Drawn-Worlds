@@ -664,12 +664,20 @@ export default function Home() {
 
   if (!bookOpen) {
     return (
-      <BookCover
-        onOpen={() => {
-          playBookOpenVoicePrompt();
-          setBookOpen(true);
-        }}
-      />
+      <>
+        <DreamyParticles
+          clickBurstCount={220}
+          burstVelocityMultiplier={18}
+          burstLifeMultiplier={2.5}
+          burstSpawnSpread={28}
+        />
+        <BookCover
+          onOpen={() => {
+            playBookOpenVoicePrompt();
+            setBookOpen(true);
+          }}
+        />
+      </>
     );
   }
 

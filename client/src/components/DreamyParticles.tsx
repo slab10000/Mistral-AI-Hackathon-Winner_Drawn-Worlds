@@ -1,6 +1,22 @@
 import { useEffect, useRef } from 'react';
 
-export default function DreamyParticles() {
+interface DreamyParticlesProps {
+  clickBurstCount?: number;
+  enableMouseTrail?: boolean;
+  enableClickBurst?: boolean;
+  burstVelocityMultiplier?: number;
+  burstLifeMultiplier?: number;
+  burstSpawnSpread?: number;
+}
+
+export default function DreamyParticles({
+  clickBurstCount = 15,
+  enableMouseTrail = true,
+  enableClickBurst = true,
+  burstVelocityMultiplier = 1,
+  burstLifeMultiplier = 1,
+  burstSpawnSpread = 20,
+}: DreamyParticlesProps) {
   const bgCanvasRef = useRef<HTMLCanvasElement>(null);
   const fgCanvasRef = useRef<HTMLCanvasElement>(null);
   const glowRef = useRef<HTMLDivElement>(null);
@@ -49,7 +65,7 @@ export default function DreamyParticles() {
       }
 
       const now = performance.now();
-      if (now - lastMouseTime > 30) { // Limit spawn rate to ~30fps
+      if (enableMouseTrail && now - lastMouseTime > 30) { // Limit spawn rate to ~30fps
         lastMouseTime = now;
         if (Math.random() < 0.6) {
           for (let i = 0; i < 2; i++) {
@@ -61,9 +77,10 @@ export default function DreamyParticles() {
 
     // Click Burst
     const handleClick = (e: MouseEvent) => {
+      if (!enableClickBurst || clickBurstCount <= 0) return;
       const cx = e.clientX;
       const cy = e.clientY;
-      for (let i = 0; i < 15; i++) { // Back to 15 for bigger burst
+      for (let i = 0; i < clickBurstCount; i++) {
         particles.push(new Particle({ startX: cx, startY: cy, type: 'burst' }));
       }
     };
@@ -89,17 +106,17 @@ export default function DreamyParticles() {
         this.isForeground = type !== 'ambient';
 
         if (opts.startX !== undefined && opts.startY !== undefined) {
-          this.x = opts.startX + (Math.random() - 0.5) * 20;
-          this.y = opts.startY + (Math.random() - 0.5) * 20;
+          this.x = opts.startX + (Math.random() - 0.5) * burstSpawnSpread;
+          this.y = opts.startY + (Math.random() - 0.5) * burstSpawnSpread;
         } else {
           this.x = Math.random() * cw;
           this.y = Math.random() * ch;
         }
         
         if (type === 'burst') {
-          this.vx = (Math.random() - 0.5) * 6;
-          this.vy = (Math.random() - 0.5) * 6;
-          this.maxLife = 600 + Math.random() * 400; 
+          this.vx = (Math.random() - 0.5) * 6 * burstVelocityMultiplier;
+          this.vy = (Math.random() - 0.5) * 6 * burstVelocityMultiplier;
+          this.maxLife = (600 + Math.random() * 400) * burstLifeMultiplier;
           this.size = Math.random() * 4 + 3;
         } else if (type === 'trail') {
           this.vx = (Math.random() - 0.5) * 1.5;
@@ -196,7 +213,14 @@ export default function DreamyParticles() {
       window.removeEventListener('click', handleClick);
       cancelAnimationFrame(animationFrameId);
     };
-  }, []);
+  }, [
+    burstLifeMultiplier,
+    burstSpawnSpread,
+    burstVelocityMultiplier,
+    clickBurstCount,
+    enableClickBurst,
+    enableMouseTrail,
+  ]);
 
   return (
     <>

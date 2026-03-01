@@ -34,6 +34,8 @@ export default function BookCover({ onOpen }: Props) {
 
   const handleClick = () => {
     if (opening) return;
+    const audio = new Audio('/magical_explosion.mp3');
+    audio.play().catch(() => {});
     setOpening(true);
     setTimeout(onOpen, 800);
   };

@@ -47,11 +47,12 @@ async function mistralChat(
   model: string,
   apiKey: string,
   maxTokens = 2048,
+  temperature = 0.7,
 ): Promise<string> {
   const body: Record<string, unknown> = {
     model,
     messages,
-    temperature: 0.7,
+    temperature,
     max_tokens: maxTokens,
   };
 
@@ -87,6 +88,7 @@ export async function callVision(
   imageDataUrl: string,
   textPrompt: string,
   apiKey: string,
+  options?: { maxTokens?: number; temperature?: number },
 ): Promise<string> {
   const messages: ChatMessage[] = [
     {
@@ -97,7 +99,13 @@ export async function callVision(
       ],
     },
   ];
-  return mistralChat(messages, MISTRAL_MODELS.vision, apiKey);
+  return mistralChat(
+    messages,
+    MISTRAL_MODELS.vision,
+    apiKey,
+    options?.maxTokens ?? 2048,
+    options?.temperature ?? 0.7,
+  );
 }
 
 /**
