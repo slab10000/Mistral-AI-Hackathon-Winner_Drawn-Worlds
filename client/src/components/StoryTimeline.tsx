@@ -9,6 +9,8 @@ interface Props {
   events: StoryEvent[];
   activeEventIdx: number | null;
   phase: StoryPhase;
+  characterNameMap: Record<string, string>;
+  onEventClick?: (event: StoryEvent, index: number) => void;
   errorMsg?: string | null;
 }
 
@@ -21,6 +23,7 @@ const PHASE_INFO: Record<StoryPhase, { label: string; color: string; spin?: bool
   world:        { label: '🔍 Analyzing your drawing…', color: 'rgba(139,92,246,0.12)', spin: true },
   agent:        { label: '✨ Writing the story…',       color: 'rgba(139,92,246,0.12)', spin: true },
   audio_gen:    { label: '🎵 Preparing audio…',         color: 'rgba(59,130,246,0.12)',  spin: true },
+  audio_ready:  { label: '🎧 Audio completed',          color: 'rgba(34,197,94,0.1)'                 },
   playing:      { label: '🔊 Narrating…',               color: 'rgba(34,197,94,0.1)'                },
   draw_prompt:  { label: '✏️ Drawing something…',       color: 'rgba(251,191,36,0.12)'              },
   speak_prompt: { label: '🎙️ Saying a word…',           color: 'rgba(251,191,36,0.12)'              },
@@ -32,7 +35,7 @@ const PHASE_INFO: Record<StoryPhase, { label: string; color: string; spin?: bool
 // Component
 // ---------------------------------------------------------------------------
 
-export default function StoryTimeline({ events, activeEventIdx, phase, errorMsg }: Props) {
+export default function StoryTimeline({ events, activeEventIdx, phase, characterNameMap, onEventClick, errorMsg }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom as events arrive
@@ -150,11 +153,57 @@ export default function StoryTimeline({ events, activeEventIdx, phase, errorMsg 
           }
 
           // ── Sound effect ───────────────────────────────────────────────
+          if (ev.type === 'dialogue') {
+            const isActive = activeEventIdx === idx;
+            const speaker = characterNameMap[ev.characterId] ?? 'Unknown character';
+            return (
+              <div
+                key={idx}
+                style={{
+                  alignSelf: 'flex-start',
+                  maxWidth: '92%',
+                  background: isActive ? 'rgba(124,58,237,0.12)' : 'rgba(109,40,217,0.07)',
+                  border: `1px solid ${isActive ? 'rgba(124,58,237,0.34)' : 'rgba(109,40,217,0.2)'}`,
+                  borderRadius: '12px',
+                  padding: '8px 12px',
+                  transition: 'all 0.3s',
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: '"Nunito", sans-serif',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    color: 'rgba(88,28,135,0.75)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.7px',
+                    marginBottom: '2px',
+                  }}
+                >
+                  {isActive ? '🔊' : '🗣️'} {speaker}
+                </p>
+                <p
+                  style={{
+                    fontFamily: '"Lora", serif',
+                    fontSize: '14px',
+                    color: '#4a1d96',
+                    fontStyle: 'italic',
+                    lineHeight: 1.55,
+                  }}
+                >
+                  "{ev.text}"
+                </p>
+              </div>
+            );
+          }
+
+          // ── Sound effect ───────────────────────────────────────────────
           if (ev.type === 'sound_effect') {
             const isActive = activeEventIdx === idx;
             return (
               <div
                 key={idx}
+                onClick={() => onEventClick?.(ev, idx)}
                 style={{
                   alignSelf: 'flex-start',
                   display: 'inline-flex',
@@ -171,6 +220,7 @@ export default function StoryTimeline({ events, activeEventIdx, phase, errorMsg 
                   fontWeight: 700,
                   color: isActive ? 'rgba(109,40,217,0.85)' : 'rgba(90,55,18,0.6)',
                   transition: 'all 0.3s',
+                  cursor: onEventClick ? 'pointer' : 'default',
                 }}
               >
                 {isActive ? '🔊' : '🎵'} {ev.description}
@@ -183,6 +233,7 @@ export default function StoryTimeline({ events, activeEventIdx, phase, errorMsg 
             return (
               <div
                 key={idx}
+                onClick={() => onEventClick?.(ev, idx)}
                 style={{
                   alignSelf: 'flex-start',
                   display: 'inline-flex',
@@ -196,6 +247,7 @@ export default function StoryTimeline({ events, activeEventIdx, phase, errorMsg 
                   fontSize: '11px',
                   fontWeight: 700,
                   color: 'rgba(30,90,210,0.75)',
+                  cursor: onEventClick ? 'pointer' : 'default',
                 }}
               >
                 🎼 {ev.description}
@@ -209,11 +261,13 @@ export default function StoryTimeline({ events, activeEventIdx, phase, errorMsg 
             return (
               <div
                 key={idx}
+                onClick={() => onEventClick?.(ev, idx)}
                 style={{
                   background: filled ? 'rgba(34,197,94,0.07)' : 'rgba(251,191,36,0.09)',
                   border: `1px solid ${filled ? 'rgba(34,197,94,0.2)' : 'rgba(175,138,80,0.22)'}`,
                   borderRadius: '12px',
                   padding: '10px 14px',
+                  cursor: onEventClick ? 'pointer' : 'default',
                 }}
               >
                 <p
@@ -262,11 +316,13 @@ export default function StoryTimeline({ events, activeEventIdx, phase, errorMsg 
             return (
               <div
                 key={idx}
+                onClick={() => onEventClick?.(ev, idx)}
                 style={{
                   background: filled ? 'rgba(34,197,94,0.07)' : 'rgba(251,191,36,0.09)',
                   border: `1px solid ${filled ? 'rgba(34,197,94,0.2)' : 'rgba(175,138,80,0.22)'}`,
                   borderRadius: '12px',
                   padding: '10px 14px',
+                  cursor: onEventClick ? 'pointer' : 'default',
                 }}
               >
                 <p

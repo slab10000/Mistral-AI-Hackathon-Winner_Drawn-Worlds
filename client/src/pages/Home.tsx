@@ -103,6 +103,9 @@ export default function Home() {
   const [ageBusy,    setAgeBusy   ] = useState(false);
   const [wizardVideoFailed, setWizardVideoFailed] = useState(false);
 
+  // ── Audio toggle ──────────────────────────────────────────────────────────
+  const [audioEnabled,  setAudioEnabled ] = useState(true);
+
   // ── Story / Agent ─────────────────────────────────────────────────────────
   const [worldModel,    setWorldModel   ] = useState<WorldModel | null>(null);
   const [storyEvents,   setStoryEvents  ] = useState<StoryEvent[]>([]);
@@ -127,10 +130,19 @@ export default function Home() {
   const isRunningRef          = useRef(false);
   const interactionResolveRef = useRef<((result: string) => void) | null>(null);
   const musicStopRef          = useRef<(() => void) | null>(null);
+  const previewMusicStopRef   = useRef<(() => void) | null>(null);
+  const previewAudioRef       = useRef<HTMLAudioElement | null>(null);
   const ageGroupRef           = useRef(ageGroup);
+  const audioEnabledRef       = useRef(audioEnabled);
+  const pageAdvanceResolveRef = useRef<(() => void) | null>(null);
 
-  // Keep ageGroupRef current
+  const characterNameMap = Object.fromEntries(
+    (worldModel?.characters ?? []).map(c => [c.name, c.name]),
+  );
+
+  // Keep refs current
   useEffect(() => { ageGroupRef.current = ageGroup; }, [ageGroup]);
+  useEffect(() => { audioEnabledRef.current = audioEnabled; }, [audioEnabled]);
 
   // ---------------------------------------------------------------------------
   // Age-gate handlers
@@ -174,23 +186,39 @@ export default function Home() {
   // ---------------------------------------------------------------------------
 
   const handleDrawSubmit = useCallback((dataUrl: string) => {
-    interactionResolveRef.current?.(dataUrl);
-    interactionResolveRef.current = null;
+    if (interactionResolveRef.current) {
+      interactionResolveRef.current(dataUrl);
+      interactionResolveRef.current = null;
+      return;
+    }
+    setCurrentDraw(null);
   }, []);
 
   const handleDrawSkip = useCallback(() => {
-    interactionResolveRef.current?.('');
-    interactionResolveRef.current = null;
+    if (interactionResolveRef.current) {
+      interactionResolveRef.current('');
+      interactionResolveRef.current = null;
+      return;
+    }
+    setCurrentDraw(null);
   }, []);
 
   const handleSpeakWord = useCallback((word: string) => {
-    interactionResolveRef.current?.(word);
-    interactionResolveRef.current = null;
+    if (interactionResolveRef.current) {
+      interactionResolveRef.current(word);
+      interactionResolveRef.current = null;
+      return;
+    }
+    setCurrentSpeak(null);
   }, []);
 
   const handleSpeakSkip = useCallback(() => {
-    interactionResolveRef.current?.('');
-    interactionResolveRef.current = null;
+    if (interactionResolveRef.current) {
+      interactionResolveRef.current('');
+      interactionResolveRef.current = null;
+      return;
+    }
+    setCurrentSpeak(null);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -200,6 +228,36 @@ export default function Home() {
   const handleClear = useCallback(() => {
     canvasRef.current?.clear();
     setIllustration(null);
+  }, []);
+
+  const handleTimelineEventClick = useCallback((ev: StoryEvent) => {
+    if (ev.type === 'music' && ev.audioUrl) {
+      previewMusicStopRef.current?.();
+      previewMusicStopRef.current = startBackgroundMusic(ev.audioUrl, 0.18);
+      return;
+    }
+
+    if (ev.type === 'sound_effect' && ev.audioUrl) {
+      previewAudioRef.current?.pause();
+      if (previewAudioRef.current) previewAudioRef.current.src = '';
+      const audio = new Audio(ev.audioUrl);
+      previewAudioRef.current = audio;
+      audio.play().catch(() => {});
+      return;
+    }
+
+    if (ev.type === 'ask_user_to_draw') {
+      setCurrentSpeak(null);
+      setCurrentDraw(ev);
+      setShowDrawing(false);
+      return;
+    }
+
+    if (ev.type === 'ask_user_to_speak') {
+      setCurrentDraw(null);
+      setCurrentSpeak(ev);
+      setShowDrawing(false);
+    }
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -218,6 +276,13 @@ export default function Home() {
     interactionResolveRef.current = null;
     musicStopRef.current?.();
     musicStopRef.current = null;
+    pageAdvanceResolveRef.current?.();
+    pageAdvanceResolveRef.current = null;
+    previewMusicStopRef.current?.();
+    previewMusicStopRef.current = null;
+    previewAudioRef.current?.pause();
+    if (previewAudioRef.current) previewAudioRef.current.src = '';
+    previewAudioRef.current = null;
 
     canvasRef.current?.clear();
     clearAudioCache();
@@ -251,6 +316,12 @@ export default function Home() {
   // ---------------------------------------------------------------------------
 
   const handleDebugTurnPage = useCallback(async () => {
+    // If the story loop is paused waiting for a manual page advance, signal it
+    if (pageAdvanceResolveRef.current) {
+      pageAdvanceResolveRef.current();
+      pageAdvanceResolveRef.current = null;
+      return;
+    }
     if (ageStep !== 'done') return;
     if (flipPhase !== 'idle') return;
     const paragraphCount = storyEvents.filter(e => e.type === 'paragraph').length;
@@ -292,12 +363,14 @@ export default function Home() {
       return;
     }
 
-    let mistralKey: string, elKey: string, voiceId: string;
+    let mistralKey: string, elKey = '', voiceId = '';
     let googleApiKey = '';
     try {
       mistralKey = getEnv('VITE_MISTRAL_API_KEY');
-      elKey      = getEnv('VITE_ELEVENLABS_API_KEY');
-      voiceId    = getEnv('VITE_ELEVENLABS_VOICE_ID');
+      if (audioEnabled) {
+        elKey   = getEnv('VITE_ELEVENLABS_API_KEY');
+        voiceId = getEnv('VITE_ELEVENLABS_VOICE_ID');
+      }
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Missing API key');
       return;
@@ -365,20 +438,14 @@ export default function Home() {
         // 3. Generate audio (TTS + SFX + music) AND images in parallel
         setPhase('audio_gen');
         await Promise.all([
-          generateAudioForEvents(newEvts, voiceId, elKey),
+          audioEnabled ? generateAudioForEvents(newEvts, voiceId, elKey) : Promise.resolve(),
           googleApiKey ? generateImagesForEvents(newEvts, googleApiKey) : Promise.resolve(),
         ]);
         if (cancelledRef.current) break;
         setStoryEvents([...allEvents]); // refresh (audioUrls + imageDataUrls now attached)
 
-        // 3. Start background music if this segment has one (first time only)
-        const musicEv = newEvts.find(e => e.type === 'music') as MusicEvent | undefined;
-        if (musicEv?.audioUrl && !musicStopRef.current) {
-          musicStopRef.current = startBackgroundMusic(musicEv.audioUrl, 0.15);
-        }
-
-        // 4. Play events sequentially; pause at user interactions
-        setPhase('playing');
+        // 4. Audio is prepared. Wait for manual "Debug: Turn Page" to continue narration.
+        setPhase('audio_ready');
         const offset = allEvents.length - newEvts.length; // index of first new event in allEvents
 
         let interactionHit = false;
@@ -401,6 +468,18 @@ export default function Home() {
 
           // ── Paragraph — page turn + narrate ──────────────────────────────
           if (ev.type === 'paragraph') {
+            await new Promise<void>(resolve => { pageAdvanceResolveRef.current = resolve; });
+            pageAdvanceResolveRef.current = null;
+            if (cancelledRef.current) break;
+
+            previewMusicStopRef.current?.();
+            previewMusicStopRef.current = null;
+            previewAudioRef.current?.pause();
+            if (previewAudioRef.current) previewAudioRef.current.src = '';
+            previewAudioRef.current = null;
+
+            setPhase('playing');
+
             // Find which paragraph index this is (within paragraphs only)
             const paraIdx = allEvents
               .slice(0, gIdx + 1)
@@ -426,11 +505,18 @@ export default function Home() {
               currentPageIdxRef.current = paraIdx;
             }
 
+            // Start story music from the first available music event once narration begins
+            const firstMusic = allEvents.find(e => e.type === 'music' && e.audioUrl) as MusicEvent | undefined;
+            if (audioEnabledRef.current && firstMusic?.audioUrl && !musicStopRef.current) {
+              musicStopRef.current = startBackgroundMusic(firstMusic.audioUrl, 0.15);
+            }
+
             // Narrate while the page is shown
             setActiveEventIdx(gIdx);
             if (ev.audioUrl) await playAudioUrl(ev.audioUrl);
             if (!cancelledRef.current) await new Promise(r => setTimeout(r, 200));
             setActiveEventIdx(null);
+            setPhase('audio_ready');
             continue;
           }
 
@@ -524,7 +610,7 @@ export default function Home() {
     } finally {
       isRunningRef.current = false;
     }
-  }, [ageStep]); // ageStep checked at start; everything else accessed via refs or stable imports
+  }, [ageStep, audioEnabled]);
 
   // ---------------------------------------------------------------------------
   // Derived
@@ -544,6 +630,7 @@ export default function Home() {
       case 'world':        return '🔍 Analyzing…';
       case 'agent':        return '✨ Writing…';
       case 'audio_gen':    return '🎵 Preparing…';
+      case 'audio_ready':  return '🎧 Audio Completed';
       case 'playing':      return '🔊 Narrating…';
       case 'draw_prompt':  return '✏️ Drawing…';
       case 'speak_prompt': return '🎙️ Speaking…';
@@ -617,6 +704,25 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          <button
+            onClick={() => setAudioEnabled(v => !v)}
+            title={audioEnabled ? 'Audio ON — click to disable ElevenLabs API calls' : 'Audio OFF — click to enable ElevenLabs API calls'}
+            style={{
+              fontFamily: '"Nunito",sans-serif',
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '5px 10px',
+              borderRadius: '999px',
+              border: audioEnabled ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(239,68,68,0.5)',
+              background: audioEnabled ? 'rgba(20,83,45,0.45)' : 'rgba(127,29,29,0.45)',
+              color: audioEnabled ? 'rgba(187,247,208,0.95)' : 'rgba(254,202,202,0.95)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            {audioEnabled ? '🔊 Audio ON' : '🔇 Audio OFF'}
+          </button>
 
           <button
             onClick={() => { void handleDebugTurnPage(); }}
@@ -977,6 +1083,8 @@ export default function Home() {
                     events={storyEvents}
                     activeEventIdx={activeEventIdx}
                     phase={phase}
+                    characterNameMap={characterNameMap}
+                    onEventClick={handleTimelineEventClick}
                     errorMsg={storyError}
                   />
                 </div>

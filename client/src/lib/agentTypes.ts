@@ -10,6 +10,13 @@ export interface ParagraphEvent {
   imagePrompt?: string;  // prompt sent to Imagen (set before generation)
 }
 
+export interface DialogueEvent {
+  type: 'dialogue';
+  characterId: string;
+  text: string;
+  audioUrl?: string;
+}
+
 export interface SoundEffectEvent {
   type: 'sound_effect';
   description: string;
@@ -42,6 +49,7 @@ export interface FinishEvent {
 
 export type StoryEvent =
   | ParagraphEvent
+  | DialogueEvent
   | SoundEffectEvent
   | MusicEvent
   | AskUserToDrawEvent
@@ -63,6 +71,7 @@ export type StoryPhase =
   | 'world'          // building world model from initial drawing
   | 'agent'          // agent is generating the next segment
   | 'audio_gen'      // generating TTS + SFX + music in parallel
+  | 'audio_ready'    // audio generation completed; waiting for manual page turn
   | 'playing'        // playing audio events sequentially
   | 'draw_prompt'    // waiting for user to draw
   | 'speak_prompt'   // waiting for user to speak
