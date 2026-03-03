@@ -1,192 +1,167 @@
 # ✨ Drawn Worlds
 
-> **Draw it. Dream it. Hear it.**
->
-> A parent-and-child collaborative bedtime story generator. Draw on a canvas → AI analyzes the drawing → generates a structured bedtime story → narrates it with ElevenLabs TTS.
+**Draw it. Speak it. Live inside it.**
 
----
+Drawn Worlds is a magical, voice-first storybook where a child’s drawing becomes an interactive adventure.
+The app reads the drawing, builds a world model, writes the story in episodes, asks the child to participate, and turns each moment into narrated audio with cinematic sound.
 
-## Architecture
+It is designed for playful co-creation between kids and adults, with an interface that feels like opening a living book.
 
-```
-client/src/
-├── components/
-│   ├── CanvasBoard.tsx      # HTML Canvas with drawing tools (undo, eraser, history)
-│   ├── ToolBar.tsx          # Brush colour, size, draw/erase, undo, clear
-│   ├── StoryPanel.tsx       # Rendered story with title, text, moral
-│   ├── JsonPanel.tsx        # Collapsible JSON viewer for WorldModel & Outline
-│   └── AudioPlayer.tsx      # ElevenLabs audio playback with progress bar
-├── lib/
-│   ├── schemas.ts           # Zod schemas: WorldModelSchema, OutlineSchema, StorySchema
-│   ├── prompts.ts           # All LLM prompts in one place
-│   ├── cache.ts             # In-memory Map<text, Blob> audio cache
-│   ├── mistral.ts           # Mistral API client (vision + text helpers)
-│   ├── visionToWorld.ts     # Step 3: image → WorldModel JSON
-│   ├── worldToOutline.ts    # Step 4: WorldModel → Outline JSON
-│   ├── outlineToStory.ts    # Step 5 + 7: Outline → Story, Continue Story
-│   └── elevenlabs.ts        # Step 6: text → Blob TTS via ElevenLabs
-└── pages/
-    └── Home.tsx             # Single-page orchestrator + layout
-```
+## Why it feels special
 
-### Pipeline (multi-step, sequential)
+- Your sketch is not just a prompt. It becomes the **actual world state**.
+- The story is not one-shot text. It runs as an **agentic loop** with turns and memory.
+- The child is not passive. They **draw and speak during the story** to change what happens next.
+- The experience is multimodal: **vision + language + voice + music + illustration**.
 
-```
-Draw on canvas
-     │
-     ▼
-Step 3 ── Mistral Vision ──► WorldModel JSON   (characters, setting, themes, storyHooks)
-     │
-     ▼
-Step 4 ── Mistral Text ───► Outline JSON       (beginning, conflict, climax, resolution, motifs)
-     │
-     ▼
-Step 5 ── Mistral Text ───► Story JSON         (storyTitle, storyText 400-700w, moral)
-     │
-     ▼
-Step 6 ── ElevenLabs TTS ─► Audio Blob         (cached in memory)
-     │
-     ▼
-Step 7 ── "Continue Story" (uses stored WorldModel + motifs as memory constraint)
-```
+## Product Experience
 
-Each step validates output with **Zod** and automatically retries once with a repair prompt if the JSON is invalid.
+1. The child opens the magic book and draws their age.
+2. Vision recognizes age (3-12) to tune storytelling difficulty.
+3. The child draws a scene.
+4. AI converts that drawing into a structured world model.
+5. A story agent generates the next narrative segment.
+6. Paragraph narration, sound effects, background music, and page illustrations are generated.
+7. The story pauses at key moments and asks the child to:
+   - Draw something that changes the plot, or
+   - Say one magic word that influences the next segment.
+8. The loop repeats until a satisfying ending.
 
----
+## Agentic Capabilities
 
-## Setup
+Drawn Worlds is built around an event-driven story agent.
 
-### 1. Prerequisites
+The agent can emit these event types:
 
-- Node.js ≥ 18
-- A [Mistral AI](https://console.mistral.ai/) account and API key
-- An [ElevenLabs](https://elevenlabs.io/) account, API key, and Voice ID
+- `music`: set long-running background mood
+- `paragraph`: narrate the next part of the story
+- `sound_effect`: punctuate moments with generated SFX
+- `ask_user_to_draw`: request a drawing and incorporate visual interpretation
+- `ask_user_to_speak`: request one spoken word and weave it into plot
+- `finish`: close the arc
 
-### 2. Install dependencies
+### What makes it agentic
+
+- **Segmented planning**: the model generates only the next segment, not the full story upfront.
+- **Tool-like actions**: each event triggers concrete generation steps (audio, image, speech capture, vision analysis).
+- **Stateful memory**: previous events and child inputs are fed back every turn.
+- **Adaptive pacing**: story advances through interaction checkpoints.
+- **Structured outputs**: JSON-only responses with strict event vocabulary reduce drift.
+
+## Demo Videos
+
+- [Clip 1](./demo-videos/clip1.mp4)
+- [Clip 2](./demo-videos/clip2.mp4)
+- [Clip 3](./demo-videos/clip3.mp4)
+
+## Technical Overview
+
+### Stack
+
+- React 18 + TypeScript + Vite
+- Tailwind CSS
+- Zod runtime schemas
+- Mistral (vision + text + large orchestrator)
+- ElevenLabs (TTS, sound effects, music)
+- Gemini image generation endpoint for per-page illustrations
+
+### Core Architecture
+
+- `client/src/pages/Home.tsx`
+  - Main runtime orchestrator
+  - UI state machine (`world`, `agent`, `audio_gen`, `playing`, `draw_prompt`, `speak_prompt`, `done`, `error`)
+- `client/src/lib/storyAgent.ts`
+  - Agent system prompt + context construction
+  - Produces next event segment as structured JSON
+- `client/src/lib/visionToWorld.ts`
+  - First-pass image-to-world extraction
+  - Includes repair pass when JSON parsing fails
+- `client/src/lib/storyPlayer.ts`
+  - Parallel audio/image generation per segment
+  - Sequential narration playback
+- `client/src/lib/visionToDrawing.ts`
+  - Interprets child follow-up drawings in story context
+- `client/src/lib/voxtral.ts`
+  - Mic capture + silence detection + one-word transcription
+- `client/src/lib/elevenlabs.ts`
+  - TTS streaming/blob generation + SFX/music generation + in-memory cache
+- `client/src/lib/imagen.ts`
+  - Story-paragraph to illustration prompting + image generation calls
+- `client/src/lib/schemas.ts`
+  - World model and story schema contracts
+
+### Runtime Flow
+
+1. **Age Gate** (`visionToAge`): recognize child age from a number drawing.
+2. **World Build** (`visionToWorld`): parse initial drawing into world JSON.
+3. **Agent Turn** (`runStoryAgent`): generate next segment of events.
+4. **Media Generation** (`storyPlayer`):
+   - TTS for paragraphs
+   - SFX for sound events
+   - Music for ambiance
+   - Illustration image per paragraph
+5. **Playback + UI Sync**:
+   - Page turns and narration advance together
+   - Music loops in background
+6. **Interaction Capture**:
+   - Draw event -> vision description injected back into context
+   - Speak event -> transcribed word injected back into context
+7. **Repeat** until `finish`.
+
+### Reliability Mechanisms
+
+- JSON extraction from model outputs (`extractJSON`)
+- Schema validation with Zod for structured objects
+- Repair retry for malformed world-model JSON
+- `Promise.allSettled` for parallel media generation (partial failures do not kill the story)
+- Defensive fallbacks for microphone/audio/network errors
+
+## Getting Started
+
+### 1. Install
 
 ```bash
 cd client
 npm install
 ```
 
-### 3. Configure environment variables
+### 2. Configure environment
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env`:
+Create `client/.env` and set:
 
 ```env
-VITE_MISTRAL_API_KEY=your_mistral_api_key_here
-VITE_ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-VITE_ELEVENLABS_VOICE_ID=your_voice_id_here
+VITE_MISTRAL_API_KEY=your_mistral_key
+VITE_ELEVENLABS_API_KEY=your_elevenlabs_key
+VITE_ELEVENLABS_VOICE_ID=your_elevenlabs_voice_id
+VITE_GOOGLE_API_KEY=your_google_ai_key   # optional, enables illustrations
 ```
 
-> **Finding your ElevenLabs Voice ID:** Log in → go to *Voice Library* → click any voice → copy the ID from the URL or the details panel.
->
-> Good choices for bedtime stories: Rachel, Elli, or any "Story" voice.
-
-### 4. Start the dev server
+### 3. Run
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173)
 
-### 5. Build for production
+### 4. Build
 
 ```bash
 npm run build
 npm run preview
 ```
 
----
+## API Keys and Public Repo Safety
 
-## Model Configuration
+This app currently calls model APIs from the frontend for hackathon speed.
+For production, move all provider calls behind a secure backend/proxy and keep keys server-side.
 
-All model names are in **one place**: `src/lib/mistral.ts` → `MISTRAL_MODELS`.
+## Current Scope
 
-```ts
-export const MISTRAL_MODELS = {
-  vision: 'pixtral-12b-2409',    // Vision-capable model
-  text:   'mistral-small-latest', // Text generation model
-};
-```
-
-Swap strings here to upgrade (e.g. `pixtral-large-latest`, `mistral-large-latest`).
+- Single-page magical storybook experience
+- Live multimodal story loop with child interaction
+- In-memory caching for generated audio assets per session
 
 ---
 
-## Safety & Child-Friendly Rules
-
-- The vision prompt instructs the model to reinterpret any scary content (weapons → toy wands, monsters → friendly creatures, etc.)
-- Safety reinterpretations are recorded in `WorldModel.safetyNotes`
-- Every story ends with a short positive moral
-- Stories are tuned per age group (3–5, 6–8, 9–12)
-
----
-
-## Session Memory
-
-- After the first story, **Continue Story** becomes available
-- The stored **WorldModel** and **motifs** are used as constraints so characters and world stay consistent
-- Session is persisted to `localStorage` (worldModel, outline, story) so it survives page refresh
-- Audio blobs live in an in-memory `Map` (cleared on page close) — re-click *Narrate* to regenerate
-
----
-
-## Demo Script (2 minutes)
-
-> Follow this script to present the project in ~2 minutes at the hackathon.
-
-### Step 1 — Intro (15s)
-> *"Drawn Worlds turns a child's doodle into a magical bedtime story with voice narration — in under a minute."*
-
-### Step 2 — Draw (30s)
-1. Open the app (canvas on the left)
-2. Pick a fun colour and draw a simple scene: a house, a sun, a cat — whatever the child wants
-3. Point out the toolbar: colours, brush size, eraser, undo
-
-### Step 3 — Generate (45s)
-1. Click **🌟 Generate Story**
-2. Watch the 4 pipeline indicators light up:
-   - 🔍 Analyzing → AI reads the drawing
-   - 📝 Planning → builds a story outline
-   - 📖 Writing → expands into a full story
-   - 🎙️ Narrating → ElevenLabs generates voice
-3. The story appears on the right, narration auto-plays
-
-### Step 4 — World Model reveal (15s)
-1. Click **🌍 World Model** to expand the JSON panel
-2. Show the structured characters, setting, story hooks
-3. *"This intermediate step is what makes the story grounded in what the child actually drew."*
-
-### Step 5 — Continue Story (15s)
-1. Click **📚 Continue Story**
-2. The story continues with the same characters and motifs
-3. *"Session memory — the AI remembers the world and stays consistent."*
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | React 18 + Vite + TypeScript |
-| Styling | Tailwind CSS |
-| Schema validation | Zod (runtime JSON validation + repair) |
-| AI — Vision | Mistral Pixtral (multimodal) |
-| AI — Text | Mistral Small |
-| TTS | ElevenLabs v1 API |
-| Storage | localStorage (text) + in-memory Map (audio) |
-| HTTP | Fetch API (no backend) |
-
----
-
-## Notes & TODOs
-
-- `TODO` comments in `mistral.ts` and `elevenlabs.ts` mark where to bump model versions
-- CORS: Mistral and ElevenLabs both allow cross-origin requests from browsers
-- For production, move API keys to a backend proxy — never ship real keys in a public frontend
+Drawn Worlds is a small but real example of an interactive multimodal agent: not just generating a story, but **running** one with the child in the loop.
